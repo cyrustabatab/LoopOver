@@ -3,7 +3,9 @@ import random
 from pprint import pprint
 
 pygame.init()
-SCREEN_WIDTH = SCREEN_HEIGHT = 500
+BOARD_WIDTH = SCREEN_HEIGHT = 500
+
+SCREEN_WIDTH = BOARD_WIDTH + 300
 screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
 
 pygame.display.set_caption("LOOPOVER")
@@ -13,6 +15,7 @@ clock = pygame.time.Clock()
 FPS = 30
 WHITE = (255,255,255)
 BLACK = (0,) * 3
+RED = (255,0,0)
 
 
 LEFT = 1
@@ -42,10 +45,61 @@ class Square(pygame.sprite.Sprite):
         return str(self.number)
 
 
-def display_board(grid):
-    pass
 
 
+
+
+class Button(pygame.sprite.Sprite):
+
+    def __init__(self,x,y,text,button_width,button_height,button_font,button_color=RED,text_color=BLACK):
+        super().__init__()
+
+        self.original_image = pygame.Surface((button_width,button_height))
+        self.original_image.fill(button_color)
+
+        text = button_font.render(text,True,text_color)
+
+        self.original_rect = self.original_image.get_rect(topleft=(x,y))
+        self.original_image.blit(text,(self.original_image.get_width()//2 - text.get_width()//2,self.original_image.get_height()//2 - text.get_height()//2))
+
+        self.image = self.original_image
+        self.rect = self.original_rect
+
+        self.expanded_image = pygame.Surface((button_width + 10,button_height + 10))
+
+        self.expanded_image.fill(button_color)
+        self.expanded_rect = self.expanded_image.get_rect(center=self.rect.center)
+
+
+        self.expanded_image.blit(text,(self.expanded_image.get_width()//2 - text.get_width()//2,self.expanded_image.get_height()//2 - text.get_height()//2))
+
+
+
+        self.hovered_on = False
+
+
+    def update(self,point):
+
+        collided = self.rect.collidepoint(point)
+        if not self.hovered_on and collided:
+            self.hovered_on = True
+            self.image = self.expanded_image
+            self.rect = self.expanded_rect
+        elif self.hovered_on and not collided:
+            self.hovered_on = False
+            self.image =self.original_image
+            self.rect = self.original_rect
+
+    
+    def is_clicked_on(self,point):
+
+
+        return self.rect.collidepoint(point)
+
+
+    
+
+        
 
 
 
@@ -53,27 +107,32 @@ def display_board(grid):
 def game(n=5):
 
     
-    square_size = SCREEN_WIDTH//n
+    square_size = BOARD_WIDTH//n
     numbers = list(range(1,n**2 + 1))
 
-
-    random.shuffle(numbers)
-
-
-    grid = []
-
-    squares = pygame.sprite.Group()
-    for row in range(n):
-        grid_row = []
-        for col in range(n):
-            number = numbers[row * n + col]
-            square_color = [random.randint(50,255) for _ in range(3)]
-            square = Square(number,square_size,square_color)
-            squares.add(square)
-            grid_row.append(square)
-        grid.append(grid_row)
     
 
+    def scramble():
+        random.shuffle(numbers)
+
+
+        grid = []
+
+        squares = pygame.sprite.Group()
+        for row in range(n):
+            grid_row = []
+            for col in range(n):
+                number = numbers[row * n + col]
+                square_color = [random.randint(50,255) for _ in range(3)]
+                square = Square(number,square_size,square_color)
+                squares.add(square)
+                grid_row.append(square)
+            grid.append(grid_row)
+        
+        return grid
+    
+
+    grid = scramble()
     def draw_board():
 
         
@@ -86,12 +145,17 @@ def game(n=5):
 
 
         for row in range(0,SCREEN_HEIGHT + 1,square_size):
-            pygame.draw.line(screen,BLACK,(0,row),(SCREEN_WIDTH,row))
+            pygame.draw.line(screen,BLACK,(0,row),(BOARD_WIDTH,row))
             pygame.draw.line(screen,BLACK,(row,0),(row,SCREEN_HEIGHT))
 
-
-
+   
+    button_width = 200 
+    button_height = button_width//2
+    button_font = pygame.font.SysFont("calibri",40)
+    scramble_button = Button(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2 - button_width//2,SCREEN_HEIGHT//2 - button_height//2,"SCRAMBLE",button_width,button_height,button_font)
     
+
+    button = pygame.sprite.GroupSingle(scramble_button)
     mouse_held_down = False
     threshold = 60
     while True:
@@ -102,16 +166,26 @@ def game(n=5):
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_held_down = True
-                mouse_start_x,mouse_start_y = pygame.mouse.get_pos()
+                point= pygame.mouse.get_pos()
+                x,y = point
+                if x <= BOARD_WIDTH:
+                    mouse_held_down = True
+                    mouse_start_x,mouse_start_y = pygame.mouse.get_pos()
+                else:
+                    if button.sprite.is_clicked_on(point):
+                        grid = scramble()
+
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 mouse_held_down= False
 
 
+        point = pygame.mouse.get_pos()
+        
+        button.update(point)
 
         
         if mouse_held_down:
-            current_mouse_x,current_mouse_y = pygame.mouse.get_pos()
+            current_mouse_x,current_mouse_y = point
             col,row = current_mouse_x // square_size,current_mouse_y//square_size
             direction = None
             if abs(mouse_start_x - current_mouse_x) >= threshold:
@@ -166,8 +240,9 @@ def game(n=5):
 
 
 
-
+        screen.fill(WHITE)
         draw_board()
+        button.draw(screen)
 
         pygame.display.update()
         clock.tick(FPS)
