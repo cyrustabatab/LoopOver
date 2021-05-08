@@ -1,6 +1,7 @@
-import pygame,sys
+import pygame,sys,time
 import random
 from pprint import pprint
+
 
 pygame.init()
 BOARD_WIDTH = SCREEN_HEIGHT = 500
@@ -104,13 +105,32 @@ class Button(pygame.sprite.Sprite):
 
 
 
-def game(n=5):
+def game(n=10):
 
     
     square_size = BOARD_WIDTH//n
     numbers = list(range(1,n**2 + 1))
 
     
+    def check_win():
+
+        start_number = 1
+
+        for row in range(n):
+            for col in range(n):
+                if board[row][col] == start_number:
+                    start_number += 1
+                else:
+                    return False
+        
+
+        return True
+
+
+
+
+
+
 
     def scramble():
         random.shuffle(numbers)
@@ -248,13 +268,153 @@ def game(n=5):
         clock.tick(FPS)
 
 
+def start_screen():
+    
+    title_font = pygame.font.SysFont("calibri",80)
+    
+    title_text = title_font.render("BOARD SIZE",True,BLACK)
+
+    
+    text = '|'
+    flickering_event = pygame.USEREVENT + 2
+    flickering_milliseconds = 400
+    pygame.time.set_timer(flickering_event,flickering_milliseconds)
+    backspace_pressed = False
+    while True:
+        current_time = time.time()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == flickering_event:
+
+                if text and text[-1] == '|':
+                    text = text[:-1]
+                else:
+                    text += '|'
+            elif event.type == pygame.KEYDOWN:
+
+                if pygame.K_0 <= event.key <= pygame.K_9:
+                    if text and text[-1] == '|':
+                        text = text[:-1] + chr(event.key) + '|'
+                    else:
+                        text += chr(event.key)
+                elif event.key == pygame.K_RETURN:
+
+                    if text and text[-1] == '|':
+                        n = int(text[:-1])
+                    elif text:
+                        n = int(text)
+                    else:
+                        print("empty")
+                        continue
+
+                    return n
+                    
+                     
+        keys_pressed = pygame.key.get_pressed()
+
+        if keys_pressed[pygame.K_BACKSPACE]:
+            do = False
+            if not backspace_pressed:
+                backspace_pressed = True
+                backspace_start= time.time()
+                do = True
+            else:
+                if current_time - backspace_start >= 0.1:
+                    do = True
+                    backspace_start = current_time
+                else:
+                    do = False
+
+            if do:
+                if text and text[-1] == '|':
+                    text = text[:-2]
+                elif text:
+                    text = text[:-1]
+        elif backspace_pressed:
+            backspace_pressed = False
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+        screen.fill(WHITE)
+        screen.blit(title_text,(SCREEN_WIDTH//2 - title_text.get_width()//2,50))
+        _text= title_font.render(text,True,BLACK)
+        width = _text.get_width()
+        if text and text[-1] == '|':
+            _text_1 = title_font.render(text[:-1],True,BLACK)
+            width = _text_1.get_width()
+
+        screen.blit(_text,(SCREEN_WIDTH//2 - width//2,SCREEN_HEIGHT//2 - _text.get_height()//2))
+        pygame.display.update()
+
+def menu():
+
+
+    title_font = pygame.font.SysFont("calibri",80)
+
+    title_text = title_font.render("LOOPOVER",True,BLACK)
+    top_gap = 50 + title_text.get_height()//2
+    title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH//2,top_gap))
+
+    button_width = 300 
+    button_height = button_width//2
+
+    gap_between_title_and_button = 50
+    start_button = Button(SCREEN_WIDTH//2 -button_width//2 ,title_text_rect.bottom + gap_between_title_and_button,"START",button_width,button_height,title_font)
+    
+    button = pygame.sprite.GroupSingle(start_button)
+    while True:
+
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                point = pygame.mouse.get_pos()
+                if button.sprite.is_clicked_on(point):
+                    n = start_screen()
+                    game(n)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                n = start_screen()
+                game(n)
+
+
+
+        
+        point = pygame.mouse.get_pos()
+        button.update(point)
+
+        screen.fill(WHITE)
+        screen.blit(title_text,title_text_rect)
+        button.draw(screen)
+
+        pygame.display.update()
+
+
+
+
+
 
 
 
 
 
 if __name__ == "__main__":
-    game()
+    menu()
 
 
 
