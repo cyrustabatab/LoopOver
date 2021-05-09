@@ -1,7 +1,10 @@
 import pygame,sys,time
 import random
 from pprint import pprint
-
+import os
+x = 300
+y = 30
+os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
 
 pygame.init()
 BOARD_WIDTH = SCREEN_HEIGHT = 500
@@ -26,14 +29,14 @@ DOWN = 4
 
 class Square(pygame.sprite.Sprite):
     font = pygame.font.SysFont("calibri",40)
-    def __init__(self,number,square_size,square_color=WHITE):
+    def __init__(self,number,square_size,font,square_color=WHITE):
         super().__init__()
 
 
         self.image = pygame.Surface((square_size,square_size))
         self.image.fill(square_color)
         self.number = number
-        number_text = self.font.render(str(number),True,BLACK)
+        number_text = font.render(str(number),True,BLACK)
 
         self.image.blit(number_text,(self.image.get_width()//2 - number_text.get_width()//2,self.image.get_height()//2 - number_text.get_height()//2))
 
@@ -106,9 +109,20 @@ class Button(pygame.sprite.Sprite):
 
 
 def game(n=10):
-
+    global SCREEN_HEIGHT,BOARD_WIDTH,SCREEN_WIDTH
     
+    if n >= 10:
+        SCREEN_HEIGHT = BOARD_WIDTH = 800
+        SCREEN_WIDTH = BOARD_WIDTH + 300
+
+        
+
+
     square_size = BOARD_WIDTH//n
+    BOARD_WIDTH = SCREEN_HEIGHT = square_size *n
+
+    pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
+    print(square_size)
     numbers = list(range(1,n**2 + 1))
 
     
@@ -122,29 +136,22 @@ def game(n=10):
                     start_number += 1
                 else:
                     return False
-        
 
         return True
-
-
-
-
-
 
 
     def scramble():
         random.shuffle(numbers)
 
-
         grid = []
-
+        font = pygame.font.SysFont("calibri",40) if n <= 12 else pygame.font.SysFont("calibri",20) if n <= 25 else pygame.font.SysFont("calibri",12) if n <= 31 else pygame.font.SysFont("calibri",10)
         squares = pygame.sprite.Group()
         for row in range(n):
             grid_row = []
             for col in range(n):
                 number = numbers[row * n + col]
                 square_color = [random.randint(50,255) for _ in range(3)]
-                square = Square(number,square_size,square_color)
+                square = Square(number,square_size,font,square_color)
                 squares.add(square)
                 grid_row.append(square)
             grid.append(grid_row)
@@ -173,9 +180,10 @@ def game(n=10):
     button_height = button_width//2
     button_font = pygame.font.SysFont("calibri",40)
     scramble_button = Button(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2 - button_width//2,SCREEN_HEIGHT//2 - button_height//2,"SCRAMBLE",button_width,button_height,button_font)
+    menu_button = Button(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2 - button_width//2,SCREEN_HEIGHT//2 - button_height//2 - 50 - button_height,"MENU",button_width,button_height,button_font)
     
 
-    button = pygame.sprite.GroupSingle(scramble_button)
+    button = pygame.sprite.Group(scramble_button,menu_button)
     mouse_held_down = False
     threshold = 60
     while True:
@@ -192,8 +200,10 @@ def game(n=10):
                     mouse_held_down = True
                     mouse_start_x,mouse_start_y = pygame.mouse.get_pos()
                 else:
-                    if button.sprite.is_clicked_on(point):
+                    if scramble_button.is_clicked_on(point):
                         grid = scramble()
+                    elif menu_button.is_clicked_on(point):
+                        return
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 mouse_held_down= False
@@ -234,7 +244,6 @@ def game(n=10):
 
                     grid[row][col] = row_copy[swap_col]
             elif direction == UP:
-                print('here')
                 col_copy = [grid[r][col] for r in range(n)]
                 for row in range(n):
                     swap_row = row + 1
@@ -279,7 +288,11 @@ def start_screen():
     flickering_event = pygame.USEREVENT + 2
     flickering_milliseconds = 400
     pygame.time.set_timer(flickering_event,flickering_milliseconds)
+    invalid_font = pygame.font.SysFont("calibri",40)
+    invalid_text = invalid_font.render("BOARD SIZE MUST BE AT LEAST 2",True,BLACK)
+
     backspace_pressed = False
+    invalid = False
     while True:
         current_time = time.time()
         for event in pygame.event.get():
@@ -308,9 +321,14 @@ def start_screen():
                     else:
                         print("empty")
                         continue
-
-                    return n
-                    
+                    if n < 2:
+                        invalid = True
+                        invalid_start = time.time()
+                    else:
+                        return n
+        if invalid:            
+            if current_time - invalid_start >= 1:
+                invalid = False
                      
         keys_pressed = pygame.key.get_pressed()
 
@@ -358,10 +376,12 @@ def start_screen():
             width = _text_1.get_width()
 
         screen.blit(_text,(SCREEN_WIDTH//2 - width//2,SCREEN_HEIGHT//2 - _text.get_height()//2))
+        if invalid:
+            screen.blit(invalid_text,(SCREEN_WIDTH//2 - invalid_text.get_width()//2,SCREEN_HEIGHT-50 - invalid_text.get_height()))
         pygame.display.update()
 
 def menu():
-
+    global SCREEN_WIDTH,SCREEN_HEIGHT,BOARD_WIDTH,screen
 
     title_font = pygame.font.SysFont("calibri",80)
 
@@ -374,7 +394,6 @@ def menu():
 
     gap_between_title_and_button = 50
     start_button = Button(SCREEN_WIDTH//2 -button_width//2 ,title_text_rect.bottom + gap_between_title_and_button,"START",button_width,button_height,title_font)
-    
     button = pygame.sprite.GroupSingle(start_button)
     while True:
 
@@ -388,9 +407,17 @@ def menu():
                 if button.sprite.is_clicked_on(point):
                     n = start_screen()
                     game(n)
+                    BOARD_WIDTH = SCREEN_HEIGHT = 500
+
+                    SCREEN_WIDTH = BOARD_WIDTH + 300
+                    pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 n = start_screen()
                 game(n)
+                BOARD_WIDTH = SCREEN_HEIGHT = 500
+
+                SCREEN_WIDTH = BOARD_WIDTH + 300
+                screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
 
 
 
