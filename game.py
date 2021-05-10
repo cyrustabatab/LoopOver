@@ -186,7 +186,25 @@ def game(n=10):
     button = pygame.sprite.Group(scramble_button,menu_button)
     mouse_held_down = False
     threshold = 60
+    moves = 0
+    moves_text = button_font.render("MOVES: 0",True,BLACK)
+
+    moves_y = SCREEN_HEIGHT//2  + button_height//2 + 50
+    moves_text_rect = moves_text.get_rect(center=(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2,moves_y))
+    start_time = time.time()
+    start_text = button_font.render("00:00.000",True,BLACK)
+    start_text_rect = moves_text.get_rect(center=(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2,moves_y + moves_text.get_height() + 50))
     while True:
+        
+        current_time = time.time()
+        difference = current_time - start_time
+        minutes= int(difference//60)
+        seconds = round(difference - minutes * 60,1)
+
+        start_text = button_font.render(f"{str(minutes).zfill(2)}:{seconds}",True,BLACK)
+
+
+
 
 
         for event in pygame.event.get():
@@ -202,6 +220,11 @@ def game(n=10):
                 else:
                     if scramble_button.is_clicked_on(point):
                         grid = scramble()
+                        moves_text = button_font.render("MOVES: 0",True,BLACK)
+                        start_text = button_font.render("00:00.000",True,BLACK)
+                        moves_text_rect = moves_text.get_rect(center=(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2,moves_y))
+                        moves = 0
+                        start_time = time.time()
                     elif menu_button.is_clicked_on(point):
                         return
 
@@ -228,6 +251,11 @@ def game(n=10):
                     direction = DOWN
                 else:
                     direction = UP
+
+            if direction:
+                moves += 1
+                moves_text = button_font.render(f"MOVES: {moves}",True,BLACK)
+                moves_text_rect = moves_text.get_rect(center=(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2,moves_y))
             if direction == LEFT:
                 row_copy = grid[row].copy()
                 for col in range(n):
@@ -272,7 +300,9 @@ def game(n=10):
         screen.fill(WHITE)
         draw_board()
         button.draw(screen)
-
+        screen.blit(moves_text,moves_text_rect)
+        screen.blit(start_text,start_text_rect)
+        
         pygame.display.update()
         clock.tick(FPS)
 
