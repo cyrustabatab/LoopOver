@@ -108,30 +108,33 @@ class Button(pygame.sprite.Sprite):
 
 
 
-def game(n=10):
+def game(rows=5,cols=5):
     global SCREEN_HEIGHT,BOARD_WIDTH,SCREEN_WIDTH
     
-    if n >= 10:
+    if rows >= 10:
         SCREEN_HEIGHT = BOARD_WIDTH = 800
         SCREEN_WIDTH = BOARD_WIDTH + 300
 
         
 
 
-    square_size = BOARD_WIDTH//n
-    BOARD_WIDTH = SCREEN_HEIGHT = square_size *n
+    square_size = BOARD_WIDTH//rows
+    SCREEN_HEIGHT = square_size *rows
+
+    BOARD_WIDTH = square_size * cols
 
     pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
     print(square_size)
-    numbers = list(range(1,n**2 + 1))
+    #numbers = list(range(1,n**2 + 1))
+    numbers = list(range(1,rows * cols + 1))
 
     
     def check_win():
 
         start_number = 1
 
-        for row in range(n):
-            for col in range(n):
+        for row in range(rows):
+            for col in range(cols):
                 if board[row][col] == start_number:
                     start_number += 1
                 else:
@@ -144,12 +147,12 @@ def game(n=10):
         random.shuffle(numbers)
 
         grid = []
-        font = pygame.font.SysFont("calibri",40) if n <= 12 else pygame.font.SysFont("calibri",20) if n <= 25 else pygame.font.SysFont("calibri",12) if n <= 31 else pygame.font.SysFont("calibri",10)
+        font = pygame.font.SysFont("calibri",40) if rows <= 12 else pygame.font.SysFont("calibri",20) if rows <= 25 else pygame.font.SysFont("calibri",12) if rows <= 31 else pygame.font.SysFont("calibri",10)
         squares = pygame.sprite.Group()
-        for row in range(n):
+        for row in range(rows):
             grid_row = []
-            for col in range(n):
-                number = numbers[row * n + col]
+            for col in range(cols):
+                number = numbers[row * cols + col]
                 square_color = [random.randint(50,255) for _ in range(3)]
                 square = Square(number,square_size,font,square_color)
                 squares.add(square)
@@ -163,8 +166,8 @@ def game(n=10):
     def draw_board():
 
         
-        for row in range(n):
-            for col in range(n):
+        for row in range(rows):
+            for col in range(cols):
                 square = grid[row][col]
                 square.draw(col * square_size,row * square_size)
 
@@ -173,7 +176,8 @@ def game(n=10):
 
         for row in range(0,SCREEN_HEIGHT + 1,square_size):
             pygame.draw.line(screen,BLACK,(0,row),(BOARD_WIDTH,row))
-            pygame.draw.line(screen,BLACK,(row,0),(row,SCREEN_HEIGHT))
+        for col in range(0,BOARD_WIDTH + 1,square_size):
+            pygame.draw.line(screen,BLACK,(col,0),(col,SCREEN_HEIGHT))
 
    
     button_width = 200 
@@ -258,30 +262,31 @@ def game(n=10):
                 moves_text_rect = moves_text.get_rect(center=(BOARD_WIDTH + (SCREEN_WIDTH - BOARD_WIDTH)//2,moves_y))
             if direction == LEFT:
                 row_copy = grid[row].copy()
-                for col in range(n):
+                for col in range(cols):
                     swap_col = col + 1
-                    if swap_col >= n:
+                    if swap_col >= cols:
                         swap_col = 0
                     grid[row][col] = row_copy[swap_col]
             elif direction == RIGHT:
                 row_copy = grid[row].copy()
-                for col in range(n):
+                for col in range(cols):
                     swap_col = col - 1
                     if swap_col < 0:
                         swap_col = -1
 
                     grid[row][col] = row_copy[swap_col]
             elif direction == UP:
-                col_copy = [grid[r][col] for r in range(n)]
-                for row in range(n):
+                col_copy = [grid[r][col] for r in range(rows)]
+                for row in range(rows):
+
                     swap_row = row + 1
-                    if swap_row == n:
+                    if swap_row == rows:
                         swap_row = 0
 
                     grid[row][col] = col_copy[swap_row]
             elif direction == DOWN:
-                col_copy = [grid[r][col] for r in range(n)]
-                for row in range(n):
+                col_copy = [grid[r][col] for r in range(rows)]
+                for row in range(rows):
                     swap_row = row - 1
                     if swap_row < 0:
                         swap_row = -1
@@ -311,7 +316,7 @@ def start_screen():
     
     title_font = pygame.font.SysFont("calibri",80)
     
-    title_text = title_font.render("BOARD SIZE",True,BLACK)
+    title_text = title_font.render("ROWS",True,BLACK)
 
     
     text = '|'
@@ -323,6 +328,7 @@ def start_screen():
 
     backspace_pressed = False
     invalid = False
+    on_col = False
     while True:
         current_time = time.time()
         for event in pygame.event.get():
@@ -345,17 +351,29 @@ def start_screen():
                 elif event.key == pygame.K_RETURN:
 
                     if text and text[-1] == '|':
-                        n = int(text[:-1])
+                        n = text[:-1]
                     elif text:
-                        n = int(text)
+                        n = text
                     else:
                         print("empty")
                         continue
+
+                    if not n or n == '|':
+                        continue
+
+                    n = int(n)
                     if n < 2:
                         invalid = True
                         invalid_start = time.time()
                     else:
-                        return n
+                        if not on_col:
+                            rows = n
+                            title_text = title_font.render("COLS",True,BLACK)
+                            text = '|'
+                            on_col = True
+                        else:
+                            cols = n
+                            return rows,n
         if invalid:            
             if current_time - invalid_start >= 1:
                 invalid = False
@@ -435,8 +453,8 @@ def menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 point = pygame.mouse.get_pos()
                 if button.sprite.is_clicked_on(point):
-                    n = start_screen()
-                    game(n)
+                    rows,cols = start_screen()
+                    game(rows,cols)
                     BOARD_WIDTH = SCREEN_HEIGHT = 500
 
                     SCREEN_WIDTH = BOARD_WIDTH + 300
